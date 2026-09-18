@@ -1,10 +1,17 @@
-// server.js
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const app = express();
-
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*", 
+    methods: ["GET", "POST"]
+  }
+});
 
 app.use(cors());
 
@@ -59,8 +66,29 @@ app.get("/boards", async (req, res) => {
   }
 });
 
+// Socket.io connection logic
+io.on("connection", (socket) => {
+  console.log("🟢 User connected to socket:", socket.id);
+
+  socket.on("draw_data", (data) => {
+    socket.broadcast.emit("receive_draw_data", data);
+  });
+
+  socket.on("clear_board", () => {
+    socket.broadcast.emit("receive_clear_board");
+  });
+
+  socket.on("load_board", (data) => {
+    socket.broadcast.emit("receive_load_board", data);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("🔴 User disconnected:", socket.id);
+  });
+});
+
 // Start server
 const PORT = 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server is running on: http://localhost:${PORT}`);
 });
